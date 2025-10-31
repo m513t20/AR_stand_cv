@@ -21,8 +21,7 @@ class CalibrationPipeline:
         self._width = 0
         self._height = 0
 
-    def process_image(self, image_path: str) -> None:
-        image = cv2.imread(image_path)
+    def process_image(self, image: np.ndarray) -> None:
         detection = self.detector.detect(image)
 
         if detection.ids is None:
@@ -70,10 +69,9 @@ class CalibrationPipeline:
             # print(data)
             # cv2.aruco.drawDetectedMarkers(tmp, detection.corners, detection.ids)
 
-            # visualized
+            # # visualized
             # cv2.imshow('Calibrated', tmp)
             # cv2.waitKey()
-        # cv2.destroyAllWindsows()
         return result
     
     def find_closest_grid(self, coordinate: np.ndarray) -> Tuple[int, int]:
