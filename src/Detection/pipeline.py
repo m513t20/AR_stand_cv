@@ -66,12 +66,12 @@ class CalibrationPipeline:
 
             data = MarkerData(detection.ids[index], grid, alignment)
             result.append(data)
-            # print(data)
-            # cv2.aruco.drawDetectedMarkers(tmp, detection.corners, detection.ids)
+            print(data)
+            cv2.aruco.drawDetectedMarkers(tmp, detection.corners, detection.ids)
 
-            # # visualized
-            # cv2.imshow('Calibrated', tmp)
-            # cv2.waitKey()
+            # visualized
+            cv2.imshow('Calibrated', tmp)
+            cv2.waitKey()
         return result
     
     def find_closest_grid(self, coordinate: np.ndarray) -> Tuple[int, int]:
