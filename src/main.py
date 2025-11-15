@@ -5,6 +5,7 @@ from Detection import KafkaMessenger
 if __name__ == "__main__":
     # on stand
     # cap = cv2.VideoCapture(0)
+    # _,image = cap.read()
     
     # debug
     image = cv2.imread('./real_caklib.png')
