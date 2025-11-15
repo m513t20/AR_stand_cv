@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import json
 from typing import Tuple, Dict, List
 
 from Detection.Geometry import GeometryUtils, AffineTransformer
@@ -57,21 +58,21 @@ class CalibrationPipeline:
         result = []
         
         for index,cord in enumerate(detection.corners):
-            tmp = warped.copy()
             grid = self.find_closest_grid(cord)
 
             center = cord[0].mean(axis=0)
-            cv2.circle(tmp, center.astype(int), 10, (255,0,0), 3)
             alignment = GeometryUtils.get_rotation_degree(cord[0][0], center)
 
-            data = MarkerData(detection.ids[index], grid, alignment)
+            data = MarkerData(int(detection.ids[index][0]), grid, alignment)
             result.append(data)
-            print(data)
-            cv2.aruco.drawDetectedMarkers(tmp, detection.corners, detection.ids)
+            # tmp = warped.copy()
+            #cv2.circle(tmp, center.astype(int), 10, (255,0,0), 3)
+            # print(data)
+            # cv2.aruco.drawDetectedMarkers(tmp, detection.corners, detection.ids)
 
-            # visualized
-            cv2.imshow('Calibrated', tmp)
-            cv2.waitKey()
+            # # visualized
+            # cv2.imshow('Calibrated', tmp)
+            # cv2.waitKey()
         return result
     
     def find_closest_grid(self, coordinate: np.ndarray) -> Tuple[int, int]:
@@ -87,3 +88,11 @@ class CalibrationPipeline:
                 closest_grid = self._grid[cord]
         
         return closest_grid
+    
+    def get_json_data(self, image: np.ndarray) -> List[str]:
+        result_data = []
+        out = self.get_board_data(image)
+        for marker_data in out:
+            result_data.append(json.dumps(marker_data.dict()))
+        print(result_data)
+        return result_data
