@@ -8,6 +8,8 @@ if __name__ == "__main__":
     
     # debug
     image = cv2.imread('./real_caklib.png')
+
+    # messenger
     messenger = KafkaMessenger(['localhost:8000'], image)
 
     while True:
