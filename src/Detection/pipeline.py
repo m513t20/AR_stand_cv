@@ -21,6 +21,8 @@ class CalibrationPipeline:
         self._transform_params: np.ndarray = None
         self._width = 0
         self._height = 0
+        self._cols = 0
+        self._rows = 0
 
     def process_image(self, image: np.ndarray) -> None:
         detection = self.detector.detect(image)
@@ -46,10 +48,12 @@ class CalibrationPipeline:
         warped = self.transformer.transform_board(image, self._transform_params, self._width, self._height)
 
         # Расчет сетки
-        cols, rows = self.calibrator.calculate_grid_dimensions(warped)
-        self._grid = self.calibrator.calculate_coordinate_grid(rows, cols)
+        cols_centers, rows_centers = self.calibrator.calculate_grid_dimensions(warped)
+        self._grid = self.calibrator.calculate_coordinate_grid(rows_centers, cols_centers)
 
-        print(f"Calibration Finished, grid size: {len(cols)}x{len(rows)}")
+        # print(f"Calibration Finished, grid size: {len(cols_centers)}x{len(rows_centers)}")
+        self._rows = len(rows_centers)
+        self._cols = len(cols_centers)
         return self._grid != {}
 
     def get_board_data(self, image: np.ndarray) -> List[MarkerData]:
@@ -89,10 +93,15 @@ class CalibrationPipeline:
         
         return closest_grid
     
-    def get_json_data(self, image: np.ndarray) -> List[str]:
-        result_data = []
+    def get_json_data(self, image: np.ndarray) -> List[Dict]:
+        result = {}
+        result["rows"] = self._rows
+        result["cols"] = self._cols
+        
+        matrix_data = []
         out = self.get_board_data(image)
         for marker_data in out:
-            result_data.append(json.dumps(marker_data.dict()))
-        print(result_data)
-        return result_data
+            matrix_data.append(marker_data.dict())
+
+        result["matrix"] = matrix_data
+        return result
