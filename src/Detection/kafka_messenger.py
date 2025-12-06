@@ -9,7 +9,7 @@ from Detection.pipeline import CalibrationPipeline
 
 class KafkaMessenger:
     
-    def __init__(self, servers: List[str], image: np.ndarray, topic: str = "stand/cv"):
+    def __init__(self, servers: List[str], image: np.ndarray, topic: str = "stand-cv"):
         self._producer = KafkaProducer(
             bootstrap_servers = servers,
             value_serializer=lambda v: json.dumps(v).encode('utf-8') 
