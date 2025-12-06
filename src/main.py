@@ -17,4 +17,3 @@ if __name__ == "__main__":
         # on stand
         _,image = cap.read()
         messenger.send_data(image)
-        break
