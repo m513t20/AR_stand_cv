@@ -4,7 +4,8 @@ import time
 import sys
 
 # --- КОНСТАНТЫ ---
-TILE_SIZE = 80
+TILE_SIZE = 70
+GAP = 4
 COLS = 10  # 0 и 9 - боковые панели, 1-8 - доска
 ROWS = 8
 WIDTH = COLS * TILE_SIZE
@@ -12,6 +13,7 @@ HEIGHT = ROWS * TILE_SIZE
 FPS = 30
 
 # Цвета
+COLOR_BG = (40, 40, 40)              
 COLOR_WHITE = (240, 217, 181)
 COLOR_BLACK = (181, 136, 99)
 COLOR_SIDEBAR_WHITE = (200, 200, 200)
@@ -74,8 +76,12 @@ class Renderer:
 
                 is_light_square = (logical_row + (col_10x8 - 1)) % 2 == 0
                 color = COLOR_WHITE if not is_light_square else COLOR_BLACK
-                rect = (visual_col * TILE_SIZE, visual_row * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-                pygame.draw.rect(self.screen, color, rect)
+
+                rect_x = visual_col * TILE_SIZE + GAP // 2
+                rect_y = visual_row * TILE_SIZE + GAP // 2
+                rect_size = TILE_SIZE - GAP
+                
+                pygame.draw.rect(self.screen, color, (rect_x, rect_y, rect_size, rect_size))
 
         if not state:
             return
@@ -95,8 +101,7 @@ class Renderer:
             visual_col = logical_row + 1
             visual_row = logical_col
 
-
-            highlight_surface = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+            highlight_surface = pygame.Surface((TILE_SIZE - GAP, TILE_SIZE - GAP), pygame.SRCALPHA)
             
             if desc == "availble moves":
                 highlight_surface.fill(COLOR_HIGHLIGHT)
@@ -105,8 +110,8 @@ class Renderer:
             elif desc == "desync":
                 highlight_surface.fill(COLOR_DESYNC)
             
-            self.screen.blit(highlight_surface, (visual_col * TILE_SIZE, visual_row * TILE_SIZE))
-
+            self.screen.blit(highlight_surface, (visual_col * TILE_SIZE + GAP // 2, visual_row * TILE_SIZE + GAP // 2))
+            
             if desc == "desync" and "figure" in status:
                 fig_id = status["figure"]
                 text = PIECES_UNICODE["white"].get(fig_id, "?") 
