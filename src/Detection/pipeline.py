@@ -70,12 +70,12 @@ class CalibrationPipeline:
             data = MarkerData(int(detection.ids[index][0]), grid, alignment)
             result.append(data)
             # tmp = warped.copy()
-            #cv2.circle(tmp, center.astype(int), 10, (255,0,0), 3)
+            # cv2.circle(tmp, center.astype(int), 10, (255,0,0), 3)
             # print(data)
             # cv2.aruco.drawDetectedMarkers(tmp, detection.corners, detection.ids)
 
             # # visualized
-            # cv2.imshow('Calibrated', tmp)
+            # cv2.imwrite('Calibrated.jpg', tmp)
             # cv2.waitKey()
         return result
     
@@ -104,4 +104,4 @@ class CalibrationPipeline:
             matrix_data.append(marker_data.dict())
 
         result["matrix"] = matrix_data
-        return result
+        return json.dumps(result)
