@@ -5,11 +5,12 @@ import sys
 
 # --- КОНСТАНТЫ ---
 TILE_SIZE = 70
-GAP = 4
+GAP = 40
+STEP = TILE_SIZE + GAP   
 COLS = 10  # 0 и 9 - боковые панели, 1-8 - доска
 ROWS = 8
-WIDTH = COLS * TILE_SIZE
-HEIGHT = ROWS * TILE_SIZE
+WIDTH = COLS * STEP - GAP
+HEIGHT = ROWS * STEP - GAP
 FPS = 30
 
 # Цвета
@@ -64,7 +65,7 @@ class Renderer:
         turn_color = COLOR_SIDEBAR_WHITE if is_white_turn else COLOR_SIDEBAR_BLACK
         
         pygame.draw.rect(self.screen, turn_color, (0, 0, TILE_SIZE, HEIGHT))
-        pygame.draw.rect(self.screen, turn_color, (9 * TILE_SIZE, 0, TILE_SIZE, HEIGHT))
+        pygame.draw.rect(self.screen, turn_color, (9 * STEP, 0, TILE_SIZE, HEIGHT))
 
         # 2. Отрисовка шахматной доски
         for logical_row in range(ROWS):
@@ -77,11 +78,10 @@ class Renderer:
                 is_light_square = (logical_row + (col_10x8 - 1)) % 2 == 0
                 color = COLOR_WHITE if not is_light_square else COLOR_BLACK
 
-                rect_x = visual_col * TILE_SIZE + GAP // 2
-                rect_y = visual_row * TILE_SIZE + GAP // 2
-                rect_size = TILE_SIZE - GAP
-                
-                pygame.draw.rect(self.screen, color, (rect_x, rect_y, rect_size, rect_size))
+                rect_x = visual_col * STEP
+                rect_y = visual_row * STEP
+
+                pygame.draw.rect(self.screen, color, (rect_x, rect_y, TILE_SIZE, TILE_SIZE))
 
         if not state:
             return
@@ -101,7 +101,7 @@ class Renderer:
             visual_col = logical_row + 1
             visual_row = logical_col
 
-            highlight_surface = pygame.Surface((TILE_SIZE - GAP, TILE_SIZE - GAP), pygame.SRCALPHA)
+            highlight_surface = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
             
             if desc == "availble moves":
                 highlight_surface.fill(COLOR_HIGHLIGHT)
@@ -110,14 +110,14 @@ class Renderer:
             elif desc == "desync":
                 highlight_surface.fill(COLOR_DESYNC)
             
-            self.screen.blit(highlight_surface, (visual_col * TILE_SIZE + GAP // 2, visual_row * TILE_SIZE + GAP // 2))
-            
+            self.screen.blit(highlight_surface, (visual_col * STEP, visual_row * STEP))
+
             if desc == "desync" and "figure" in status:
                 fig_id = status["figure"]
                 text = PIECES_UNICODE["white"].get(fig_id, "?") 
                 text_surface = self.font.render(text, True, (255, 0, 0)) 
-                text_rect = text_surface.get_rect(center=((visual_col) * TILE_SIZE + TILE_SIZE // 2, 
-                                                          visual_col * TILE_SIZE + TILE_SIZE // 2))
+                text_rect = text_surface.get_rect(center=((visual_col) * STEP + TILE_SIZE // 2, 
+                                                          visual_col * STEP + TILE_SIZE // 2))
                 self.screen.blit(text_surface, text_rect)
 
         # 4. Отрисовка нормальных фигур
@@ -139,8 +139,8 @@ class Renderer:
                     text_color = (0, 0, 0) if p_color == "black" else (255, 255, 255)
                     
                     text_surface = self.font.render(text, True, text_color)
-                    text_rect = text_surface.get_rect(center=(visual_col * TILE_SIZE + TILE_SIZE // 2, 
-                                                              visual_row * TILE_SIZE + TILE_SIZE // 2))
+                    text_rect = text_surface.get_rect(center=(visual_col * STEP + TILE_SIZE // 2, 
+                                                              visual_row * STEP + TILE_SIZE // 2))
                     self.screen.blit(text_surface, text_rect)
         
 
@@ -195,7 +195,7 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        print(state)
+        # print(state)
         renderer.draw_board(state)
         pygame.display.flip()
         
