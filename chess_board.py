@@ -4,8 +4,8 @@ import time
 import sys
 
 # --- КОНСТАНТЫ ---
-TILE_SIZE = 70
-GAP = 40
+TILE_SIZE = 65
+GAP = 10
 STEP = TILE_SIZE + GAP   
 COLS = 10  # 0 и 9 - боковые панели, 1-8 - доска
 ROWS = 8
@@ -99,7 +99,7 @@ class Renderer:
 
             logical_col, logical_row = sq             
             visual_col = logical_row + 1
-            visual_row = logical_col
+            visual_row = 7 - logical_col
 
             highlight_surface = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
             
@@ -130,7 +130,7 @@ class Renderer:
                 piece_data = board[logical_row][col_8x8]
                 if "piece" in piece_data:
                     visual_col = logical_row + 1
-                    visual_row = col_8x8
+                    visual_row = 7 - col_8x8
 
                     p_id = piece_data["piece"]
                     p_color = piece_data["color"]
