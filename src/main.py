@@ -1,65 +1,88 @@
-import cv2
-from fastapi import FastAPI, Response
+# main.py
+import Config as config
+import requests
+from Client import StandClient
+from Chess import ChessRenderer
 
-from Detection import CalibrationPipeline
-
-pipeline = CalibrationPipeline()
-
-cap = cv2.VideoCapture(0)
-_, image = cap.read()
-cv2.imwrite("calibration.jpg", image)
-cap.release()
-
-app = FastAPI(title="Stand api")
-
-# image = cv2.imread('./real_caklib.png')
-if not pipeline.process_image(image):
-    raise RuntimeError("couldn't detect calibration")
-
-print(f'calibration finished {pipeline._rows}x{pipeline._cols}')
-
-@app.get("/calibrate")
-async def calibrate_camera():
-    cap = cv2.VideoCapture(0)
-    _, image = cap.read()
-    cv2.imwrite("calibration.jpg", image)
-    cap.release()
-
-    app = FastAPI(title="Stand api")
-
-    # image = cv2.imread('./real_caklib.png')
-    if not pipeline.process_image(image):
-        raise RuntimeError("couldn't detect calibration")
-    return {
-        "rows": pipeline._cols,
-        "cols": pipeline._rows
-    }
-
-@app.get("/data")
-async def process_step():
-    cap = cv2.VideoCapture(0)
-    import time
-    time.sleep(1)
-
-    _, image = cap.read()
+def register_stand_via_http():
+    """Регистрация стенда в Lobby Service (FastAPI)"""
+    print(f"Отправка PIN кода в лобби: {config.PIN_CODE}")
+    url = f"{config.API_BASE_URL}/api/v1/stands/register-pin"
+    payload = {"stand_id": config.STAND_ID, "pin_code": config.PIN_CODE}
     
-    # image = cv2.imread('./real_caklib.png')
-    cap.release()
-    return pipeline.get_json_data(image)
+    try:
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            print("Стенд успешно зарегистрирован по API!")
+        else:
+            print(f"Внимание при регистрации: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"Бэкенд недоступен ({url}): {e}. Убедись, что docker-compose up запущен.")
 
-@app.get("/image")
-async def process_step():
-    cap = cv2.VideoCapture(0)
-    import time
-    time.sleep(1)
-
-    _, image = cap.read()
+def main():
+    print("Инициализация AR Chess Стенда...")
     
-    cap.release()
-    res, im_png = cv2.imencode(".png", image)
-
-    return Response(content=im_png.tobytes(), media_type="image/png")
+    # 1. Стучимся в HTTP API для регистрации (согласно README)
+    register_stand_via_http()
+    
+    # 2. Подготавливаем графику
+    renderer = ChessRenderer(config)
+    
+    def update_board(fen):
+        renderer.update_board_from_fen(fen)
+        
+    # 3. Стартуем MQTT клиент
+    client = StandClient(config, on_board_update=update_board)
+    client.connect()
+    
+    print("Окно графики запущено. Ожидание привязки в Dashboard...")
+    
+    # 4. Рендерим доску в главном потоке
+    while True:
+        renderer.render_loop()
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    main()
+
+# def main():
+#     # калиборуемся камерой и выводим результат
+#     pipeline = CalibrationPipeline()
+
+#     cap = cv2.VideoCapture(0)
+#     _, image = cap.read()
+#     cv2.imwrite("calibration.jpg", image)
+
+#     if not pipeline.process_image(image):
+#         raise RuntimeError("couldn't detect calibration")
+
+#     print(f'calibration finished {pipeline._rows}x{pipeline._cols}')
+
+#     # создаем топик и регистрируем стенд
+#     publisher = MQTTPublisher(
+#         broker_host=BROCKER_HOST,
+#         broker_port=BROCKER_PORT,
+#         client_id=STAND_ID
+#     )
+#     publisher.connect()
+
+#     publisher.client.subscribe(f'stands/{STAND_ID}/command', qos=2)
+#     game_id=""
+
+#     try:
+#         while True:
+#             topic = f"game/{game_id}/{STAND_ID}/markers"
+#             ret, frame = cap.read()
+#             data = pipeline.get_json_data(frame)
+#             payload = json.loads(data)
+
+#             publisher.publish_data(topic, payload)
+#             time.sleep(DELAY)
+
+#     except KeyboardInterrupt:
+#         pass
+#     finally:
+#         publisher.disconnect()
+#         cap.release()
+
+# if __name__ == "__main__":
+#     main()
