@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import json
+import os
 from typing import Tuple, Dict, List
 
 from Detection.Geometry import GeometryUtils, AffineTransformer
@@ -105,3 +106,45 @@ class CalibrationPipeline:
 
         result["matrix"] = matrix_data
         return json.dumps(result)
+
+    def save_calibration(self, filepath: str = "calibration_data.json"):
+            """Сохраняет данные калибровки в JSON файл"""            
+            # JSON не поддерживает кортежи (tuple) в качестве ключей словаря,
+            # поэтому преобразуем _grid в удобный список словарей
+            grid_list = [{"px": list((float(k[0]),float(k[1]))), "grid": list(v)} for k, v in self._grid.items()]
+            
+            data = {
+                "transform_params": self._transform_params.tolist() if self._transform_params is not None else None,
+                "width": self._width,
+                "height": self._height,
+                "rows": self._rows,
+                "cols": self._cols,
+                "grid": grid_list
+            }
+            
+            with open(filepath, "w") as f:
+                json.dump(data, f, indent=4)
+            print(f"Калибровка успешно сохранена в {filepath}")
+
+    def load_calibration(self, filepath: str = "calibration_data.json") -> bool:
+        """Загружает данные калибровки из JSON файла"""
+        if not os.path.exists(filepath):
+            return False
+            
+        try:
+            with open(filepath, "r") as f:
+                data = json.load(f)
+                
+            self._transform_params = np.array(data["transform_params"], dtype=np.float32)
+            self._width = data["width"]
+            self._height = data["height"]
+            self._rows = data["rows"]
+            self._cols = data["cols"]
+            
+            # Восстанавливаем словарь _grid с ключами-кортежами (tuple)
+            self._grid = {tuple(item["px"]): tuple(item["grid"]) for item in data["grid"]}
+            
+            return True
+        except Exception as e:
+            print(f"Ошибка при чтении файла калибровки: {e}")
+            return False

@@ -17,16 +17,34 @@ class StandClient:
         self.on_board_update = on_board_update
         self.active_game_id = None
         self.is_playing = False
+        self.last_sent_state = None
         
-        # калиборуемся камерой и выводим результат
-        self.pipeline = CalibrationPipeline()
+        # Подключаем камеру
         self.cap = cv2.VideoCapture(0)
-        _, image = self.cap.read()
-        # image = cv2.imread("real_caklib.png")
-        cv2.imwrite("calibration.jpg", image)
-        if not self.pipeline.process_image(image):
-            raise RuntimeError("couldn't detect calibration")
-        print(f'calibration finished {self.pipeline._rows}x{self.pipeline._cols}')
+        self.pipeline = CalibrationPipeline()
+        
+        calib_file = "calibration_data.json"
+        
+        # Пытаемся загрузить старую калибровку
+        if self.pipeline.load_calibration(calib_file):
+            print(f"Загружена сохраненная калибровка {self.pipeline._rows}x{self.pipeline._cols}")
+        else:
+            print("Файл калибровки не найден. Запуск алгоритма калибровки...")
+            # Читаем кадр с камеры для калибровки
+            # Сбрасываем первые пару кадров, пока камера "просыпается" и настраивает фокус/свет
+            for _ in range(5):
+                self.cap.read()
+                time.sleep(0.1)
+                
+            ret, image = self.cap.read()
+            if not ret or not self.pipeline.process_image(image):
+                raise RuntimeError("Не удалось обнаружить маркеры калибровки! Проверьте освещение и пустую доску.")
+                
+            cv2.imwrite("calibration.jpg", image)
+            print(f"Калибровка успешно завершена {self.pipeline._rows}x{self.pipeline._cols}")
+            
+            # Сохраняем результат
+            self.pipeline.save_calibration(calib_file)
 
 
     def connect(self):
@@ -70,31 +88,58 @@ class StandClient:
     def send_markers_loop(self):
         """Симулирует отправку данных с камеры / Aruco маркеров"""
         topic = f"game/{self.active_game_id}/{self.config.STAND_ID}/markers"
+        
+        # Словарь для хранения "счетчика стабильности" каждого маркера
+        # Формат: { marker_id: count_of_frames_seen }
+        self.marker_stability = {}
+        # Порог стабильности (сколько кадров подряд маркер должен быть виден)
+        STABILITY_THRESHOLD = 5 
+        
         self.last_sent_state = None
+        
         while self.is_playing:
             ret, frame = self.cap.read()
             if not ret:
-                time.sleep(0.5)
+                time.sleep(0.1)
                 continue
                 
-            # Получаем текущее состояние с камеры
-            json_data = self.pipeline.get_json_data(frame)
-            current_payload = json.loads(json_data)
+            # Получаем все детекции из текущего кадра
+            current_data = self.pipeline.get_board_data(frame)
             
-            # Извлекаем список маркеров. 
-            # Сортируем их по 'id', чтобы исключить ложные срабатывания, 
-            # если OpenCV нашел те же маркеры, но в другом порядке
-            current_markers = current_payload.get("matrix", [])
-            current_markers_sorted = sorted(current_markers, key=lambda x: x["id"])
+            # Находим, какие маркеры видны на ЭТОМ кадре
+            visible_ids = {m.id for m in current_data}
             
-            # Если состояние изменилось (или это первая отправка)
-            if current_markers_sorted != self.last_sent_state:
-                print("Обнаружено изменение на доске! Отправка данных на брокер...")
-                self.client.publish(topic, json.dumps(current_payload))
-                
-                # Обновляем кэш
-                self.last_sent_state = current_markers_sorted
+            # Обновляем счетчики:
+            # 1. Для видимых увеличиваем счетчик
+            for m in current_data:
+                self.marker_stability[m.id] = self.marker_stability.get(m.id, 0) + 1
             
-            # Спим перед следующим кадром (можно уменьшить до 0.5, 
-            # т.к. сеть мы теперь не грузим)
-            time.sleep(1)
+            # 2. Для исчезнувших сбрасываем счетчик (или уменьшаем)
+            # Если маркер пропал, мы "не верим" в его исчезновение сразу
+            # и ждем пару кадров, либо сбрасываем сразу
+            for m_id in list(self.marker_stability.keys()):
+                if m_id not in visible_ids:
+                    self.marker_stability[m_id] = 0 # Сбрасываем доверие, если пропал
+            
+            # Формируем список "стабильных" маркеров
+            stable_markers =[
+                m for m in current_data 
+                if self.marker_stability.get(m.id, 0) >= STABILITY_THRESHOLD
+            ]
+            
+            # Сортируем для сравнения
+            stable_markers_sorted = sorted(stable_markers, key=lambda x: x.id)
+            
+            # Преобразуем в список словарей для сравнения с кэшем
+            current_payload_matrix = [m.dict() for m in stable_markers_sorted]
+            
+            # Отправляем, только если состояние стабильно и оно отличается от прошлого
+            if current_payload_matrix != self.last_sent_state:
+                # Дополнительная проверка: если мы только что "стабилизировали" маркер,
+                # отправляем данные.
+                payload = {"matrix": current_payload_matrix}
+                self.client.publish(topic, json.dumps(payload))
+                self.last_sent_state = current_payload_matrix
+                print("Стабильное состояние отправлено.")
+            
+            time.sleep(0.2) # Уменьшили задержку, так как фильтрация теперь внутри
