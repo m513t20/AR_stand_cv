@@ -15,7 +15,7 @@ class ChessRenderer:
         self.font = pygame.font.SysFont(fonts, int(config.SQUARE_SIZE * 0.7))
         
         # Стартовая позиция (стандартная FEN)
-        self.update_board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
+        self.update_board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR",'w')
         
         self.pieces_unicode = {
             'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
@@ -39,10 +39,10 @@ class ChessRenderer:
         
         return mirrored.tolist()
 
-    def update_board_from_fen(self, fen):
-        """Парсит FEN от бэкенда и обновляет доску"""
+    def update_board_from_fen(self, fen, active_color):
         raw_board = self._fen_to_board(fen)
         self.board_state = self._rotate_board_layout(raw_board)
+        self.active_color = active_color # Теперь индикатор будет знать, чей ход
 
     def _fen_to_board(self, fen):
         """Вспомогательная функция: FEN -> 2D Массив 8x8"""
@@ -59,19 +59,43 @@ class ChessRenderer:
         return board
 
     def draw_board(self):
-        colors = [(238, 238, 210), (118, 150, 86)]
         sq_sz = self.config.SQUARE_SIZE
+        padding = self.config.CELL_PADDING
         
+        # 1. Отрисовка основной доски (8x8)
         for row in range(8):
             for col in range(8):
-                pygame.draw.rect(self.screen, colors[(row + col) % 2], 
-                                 pygame.Rect(col*sq_sz, row*sq_sz, sq_sz, sq_sz))
+                # Рисуем черный фон (паддинг)
+                rect_x = col * sq_sz
+                rect_y = row * sq_sz
+                pygame.draw.rect(self.screen, (0, 0, 0), (rect_x, rect_y, sq_sz, sq_sz))
+                
+                # Рисуем клетку внутри паддинга
+                cell_color = (238, 238, 210) if (row + col) % 2 == 0 else (118, 150, 86)
+                inner_rect = pygame.Rect(
+                    rect_x + padding, 
+                    rect_y + padding, 
+                    sq_sz - 2 * padding, 
+                    sq_sz - 2 * padding
+                )
+                pygame.draw.rect(self.screen, cell_color, inner_rect)
+                
+                # Рисуем фигуру
                 piece = self.board_state[row][col]
                 if piece != '.':
                     char = self.pieces_unicode.get(piece, piece)
                     text_surface = self.font.render(char, True, (0, 0, 0))
-                    text_rect = text_surface.get_rect(center=(col*sq_sz + sq_sz//2, row*sq_sz + sq_sz//2))
+                    text_rect = text_surface.get_rect(center=inner_rect.center)
                     self.screen.blit(text_surface, text_rect)
+
+        # 2. Отрисовка индикатора хода справа
+        # Предположим, текущий ход приходит в self.active_color ('w' или 'b')
+        indicator_x = 8 * sq_sz
+        indicator_width = self.config.INDICATOR_WIDTH * sq_sz
+        
+        color = (255, 255, 255) if getattr(self, 'active_color', 'w') == 'w' else (50, 50, 50)
+        pygame.draw.rect(self.screen, color, (indicator_x, 0, indicator_width, self.config.SCREEN_HEIGHT))
+        
 
     def render_loop(self):
         for event in pygame.event.get():

@@ -83,9 +83,15 @@ class StandClient:
             try:
                 data = json.loads(payload)
                 if "fen" in data:
-                    self.on_board_update(data["fen"])
+                    # Парсим FEN: вторая часть строки FEN (например, "w" или "b") — это активный цвет
+                    fen_parts = data["fen"].split(' ')
+                    active_color = fen_parts[1] if len(fen_parts) > 1 else 'w'
+                    
+                    # Передаем и доску, и цвет в рендерер
+                    self.on_board_update(data["fen"], active_color)
             except Exception as e:
-                print(f"Ошибка парсинга FEN: {e}")
+                print(f"Ошибка парсинга: {e}")
+        
 
     def send_markers_loop(self):
         """Симулирует отправку данных с камеры / Aruco маркеров"""
