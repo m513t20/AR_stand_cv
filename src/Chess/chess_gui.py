@@ -1,6 +1,7 @@
 # chess_gui.py
 import pygame
 import sys
+import numpy as np
 
 class ChessRenderer:
     def __init__(self, config):
@@ -14,16 +15,34 @@ class ChessRenderer:
         self.font = pygame.font.SysFont(fonts, int(config.SQUARE_SIZE * 0.7))
         
         # Стартовая позиция (стандартная FEN)
-        self.board_state = self._fen_to_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
+        self.update_board_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
         
         self.pieces_unicode = {
             'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
             'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔', 'P': '♙'
         }
 
+    def _rotate_board_layout(self, board):
+        """
+        1. Поворачиваем доску на 90 градусов (белые налево, черные направо).
+        2. Отражаем по горизонтали, чтобы инвертировать порядок фигур (Король <-> Ферзь).
+        """
+        arr = np.array(board)
+        
+        # 1. Поворот (transpose + flip) для перевода белых влево
+        # np.rot90(arr, k=-1) это поворот на 90 град по часовой
+        rotated = np.rot90(arr, k=1)
+        
+        # 2. Отражаем по горизонтали (ось 1), чтобы "зеркально" поменять местами 
+        # фигуры, стоящие на линии (включая короля и ферзя)
+        mirrored = np.fliplr(rotated)
+        
+        return mirrored.tolist()
+
     def update_board_from_fen(self, fen):
         """Парсит FEN от бэкенда и обновляет доску"""
-        self.board_state = self._fen_to_board(fen)
+        raw_board = self._fen_to_board(fen)
+        self.board_state = self._rotate_board_layout(raw_board)
 
     def _fen_to_board(self, fen):
         """Вспомогательная функция: FEN -> 2D Массив 8x8"""
