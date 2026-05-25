@@ -70,13 +70,31 @@ class StandClient:
     def send_markers_loop(self):
         """Симулирует отправку данных с камеры / Aruco маркеров"""
         topic = f"game/{self.active_game_id}/{self.config.STAND_ID}/markers"
-        
+        self.last_sent_state = None
         while self.is_playing:
-            # Заглушка: тут ты будешь отправлять реальные кординаты маркеров с камеры.
-            # По документации: 1-6 это белые фигуры, 11-16 - черные.
             ret, frame = self.cap.read()
-            # frame = cv2.imread("real_caklib.png")
-            data = self.pipeline.get_json_data(frame)
-            payload = json.loads(data)
-            self.client.publish(topic, json.dumps(payload))
-            time.sleep(2)  # Частота кадров (FPS) с камеры
+            if not ret:
+                time.sleep(0.5)
+                continue
+                
+            # Получаем текущее состояние с камеры
+            json_data = self.pipeline.get_json_data(frame)
+            current_payload = json.loads(json_data)
+            
+            # Извлекаем список маркеров. 
+            # Сортируем их по 'id', чтобы исключить ложные срабатывания, 
+            # если OpenCV нашел те же маркеры, но в другом порядке
+            current_markers = current_payload.get("matrix", [])
+            current_markers_sorted = sorted(current_markers, key=lambda x: x["id"])
+            
+            # Если состояние изменилось (или это первая отправка)
+            if current_markers_sorted != self.last_sent_state:
+                print("Обнаружено изменение на доске! Отправка данных на брокер...")
+                self.client.publish(topic, json.dumps(current_payload))
+                
+                # Обновляем кэш
+                self.last_sent_state = current_markers_sorted
+            
+            # Спим перед следующим кадром (можно уменьшить до 0.5, 
+            # т.к. сеть мы теперь не грузим)
+            time.sleep(1)
