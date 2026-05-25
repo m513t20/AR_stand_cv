@@ -41,7 +41,7 @@ class CalibrationPipeline:
         board_rect = GeometryUtils.get_min_area_rect_points(all_corners)
 
         # Выбор трех ключевых углов
-        source_corners = np.array([board_rect[1], board_rect[2], board_rect[0]])
+        source_corners = np.array([board_rect[0], board_rect[1], board_rect[3]])
 
         # Перспективная коррекция
         self._transform_params, self._width, self._height = self.transformer.get_transform_params(source_corners)
