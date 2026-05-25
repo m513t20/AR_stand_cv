@@ -45,6 +45,8 @@ class StandClient:
             
             # Сохраняем результат
             self.pipeline.save_calibration(calib_file)
+        ret, frame = self.cap.read()
+        self.pipeline.get_json_data(frame)
 
 
     def connect(self):
