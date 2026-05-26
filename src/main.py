@@ -28,8 +28,8 @@ def main():
     # 2. Подготавливаем графику
     renderer = ChessRenderer(config)
     
-    def update_board(fen):
-        renderer.update_board_from_fen(fen)
+    def update_board(fen, color):
+        renderer.update_board_from_fen(fen, color)
         
     # 3. Стартуем MQTT клиент
     client = StandClient(config, on_board_update=update_board)

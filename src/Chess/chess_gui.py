@@ -95,7 +95,7 @@ class ChessRenderer:
         
         color = (255, 255, 255) if getattr(self, 'active_color', 'w') == 'w' else (50, 50, 50)
         pygame.draw.rect(self.screen, color, (indicator_x, 0, indicator_width, self.config.SCREEN_HEIGHT))
-        
+        self.draw_pin_code()
 
     def render_loop(self):
         for event in pygame.event.get():
@@ -106,3 +106,24 @@ class ChessRenderer:
         self.draw_board()
         pygame.display.flip()
         self.clock.tick(self.config.FPS)
+
+    def draw_pin_code(self):
+        # 1. Рендерим текст на обычной поверхности
+        # Используем жирный шрифт для красоты
+        pin_font = pygame.font.SysFont('arial', int(self.config.SQUARE_SIZE * 0.5), bold=True)
+        text_surf = pin_font.render(f"PIN: {self.config.PIN_CODE}", True, (255, 255, 0)) # Желтый цвет
+        
+        # 2. Поворачиваем поверхность на 90 градусов (против часовой)
+        rotated_text = pygame.transform.rotate(text_surf, 90)
+        
+        # 3. Вычисляем позицию в центре индикатора
+        indicator_x = 8 * self.config.SQUARE_SIZE
+        indicator_width = self.config.INDICATOR_WIDTH * self.config.SQUARE_SIZE
+        indicator_center_x = indicator_x + (indicator_width // 2)
+        indicator_center_y = self.config.SCREEN_HEIGHT // 2
+        
+        # Центрируем повернутый текст
+        text_rect = rotated_text.get_rect(center=(indicator_center_x, indicator_center_y))
+        
+        # 4. Рисуем поверх индикатора
+        self.screen.blit(rotated_text, text_rect)

@@ -41,7 +41,7 @@ class CalibrationPipeline:
 
         board_rect = GeometryUtils.get_min_area_rect_points(all_corners)
         center = board_rect.mean(axis=0)
-        expanded_rect = center + (board_rect - center) * 1.05
+        expanded_rect = center + (board_rect - center) * 1.15
         
         # Выбор трех ключевых углов
         source_corners = np.array([expanded_rect[0], expanded_rect[1], expanded_rect[3]])
